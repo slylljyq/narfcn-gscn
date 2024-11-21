@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GSCN 和 NARFCN 转换</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            padding: 20px;
+            background-color: #f4f4f9;
+        }
+        .converter {
+            max-width: 400px;
+            margin: auto;
+            padding: 20px;
+            background: #fff;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            padding: 10px 15px;
+            background: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="converter">
+        <h2>GSCN 和 NARFCN 转换</h2>
+        <label for="gscn">GSCN:</label>
+        <input type="number" id="gscn" placeholder="输入 GSCN 值" oninput="convertGscnToNarfcn()">
+        <label for="narfcn">NARFCN:</label>
+        <input type="number" id="narfcn" placeholder="输入 NARFCN 值" oninput="convertNarfcnToGscn()">
+    </div>
+    <script>
+        const UINT32_MAX = 4294967295;
+
+        // GSCN -> NARFCN
+        function calcSsbNarfcnByGscn(gscn) {
+            if (gscn >= 2 && gscn <= 7498) {
+                return (((gscn + 1) / 3 * 1200 + ((gscn + 1) % 3 * 2 + 1) * 50) / 5);
+            } else if (gscn >= 7499 && gscn <= 22255) {
+                return ((gscn - 7499) * 1440 / 15 + 600000);
+            } else if (gscn >= 22256 && gscn <= 26639) {
+                return ((gscn - 22256) * 17280 / 60 + 2016667);
+            } else if (gscn >= 26640 && gscn <= 31634) {
+                return (((gscn - 26637) / 3 * 600 + (((gscn - 26637) % 3) * 2 + 1) * 50 + 300) / 5);
+            } else {
+                return UINT32_MAX;
+            }
+        }
+
+        // NARFCN -> GSCN
+        function calcGscnBySsbNarfcn(ssbNarfcn) {
+            if (ssbNarfcn <= 599999) {
+                const right = 5 * ssbNarfcn;
+                const n = Math.floor(right / 144);
+                const m = Math.floor((right % 144) / 24);
+
+                if (n !== UINT32_MAX && m !== UINT32_MAX) {
+                    return 3 * n + Math.floor((m - 3) / 2);
+                }
+            } else if (ssbNarfcn <= 2016666) {
+                const right = 15 * (ssbNarfcn - 600000);
+                if (right % 1440 === 0) {
+                    const n = right / 1440;
+                    return 7499 + n;
+                }
+            } else if (ssbNarfcn <= 3279165) {
+                const right = 60 * (ssbNarfcn - 2016667);
+                if (right % 17280 === 0) {
+                    const n = right / 17280;
+                    return 22256 + n;
+                }
+            }
+            return UINT32_MAX;
+        }
+
+        // 当输入 GSCN 时自动计算 NARFCN
+        function convertGscnToNarfcn() {
+            const gscnInput = document.getElementById("gscn");
+            const narfcnInput = document.getElementById("narfcn");
+            const gscn = parseInt(gscnInput.value, 10);
+
+            if (!isNaN(gscn)) {
+                const narfcn = calcSsbNarfcnByGscn(gscn);
+                narfcnInput.value = narfcn !== UINT32_MAX ? narfcn : "无效输入";
+            } else {
+                narfcnInput.value = "";
+            }
+        }
+
+        // 当输入 NARFCN 时自动计算 GSCN
+        function convertNarfcnToGscn() {
+            const narfcnInput = document.getElementById("narfcn");
+            const gscnInput = document.getElementById("gscn");
+            const narfcn = parseInt(narfcnInput.value, 10);
+
+            if (!isNaN(narfcn)) {
+                const gscn = calcGscnBySsbNarfcn(narfcn);
+                gscnInput.value = gscn !== UINT32_MAX ? gscn : "无效输入";
+            } else {
+                gscnInput.value = "";
+            }
+        }
+    </script>
+</body>
+</html>
